@@ -107,7 +107,7 @@ def start_app(config, module_callback):
     server = tornado.httpserver.HTTPServer(application)
     server.listen(port = int(config.SERVER_PORT), address = str(config.SERVER_INTERFACE))
     if config.APP_DEBUG:
-        print("Starting Tornado server: {0}".format(config.SERVER_INTERFACE+":"+config.SERVER_PORT+"/"+config.APP_PREFIX))
+        print("Starting Tornado server: http://{0}".format(config.SERVER_INTERFACE+":"+config.SERVER_PORT+"/"+config.APP_PREFIX))
     return server
 
 def close_all_websockets():
