@@ -19,11 +19,15 @@ except ImportError:
 lock = threading.Lock()
 live_web_sockets = set()
 
+signal_received = False
+
+# Importing from system packages first can override the use of locally edited code.
 try: # try to use pkg_resources to allow for zipped python eggs
     import pkg_resources
     APP_ROOT = pkg_resources.resource_filename('MAVProxy.modules.mavproxy_cesium','app')
     APP_STATIC = pkg_resources.resource_filename('MAVProxy.modules.mavproxy_cesium.app','static')
     APP_TEMPLATES = pkg_resources.resource_filename('MAVProxy.modules.mavproxy_cesium.app','templates')
+    raise Exception("Don't use this")
 except: # otherwise fall back to the standard file system
     APP_ROOT = os.path.dirname(os.path.abspath(__file__))
     APP_STATIC = os.path.join(APP_ROOT, 'static')
