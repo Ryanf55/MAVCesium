@@ -114,13 +114,34 @@ def close_all_websockets():
     for ws in removable:
         live_web_sockets.remove(ws)
     lock.release()
-            
+
 def stop_tornado(config):
-    close_all_websockets()
-    ioloop = tornado.ioloop.IOLoop.current()
-    ioloop.add_callback(ioloop.stop)
+
     if config.APP_DEBUG:
         print("Asked Tornado to exit")
+
+    # Tornado doesn't stop well with the current architecture.
+    # Try this approach so we don't have to result to sigterm in CLI.
+    # https://github.com/tornadoweb/tornado/issues/1791#issuecomment-238214198
+    
+    ioloop = tornado.ioloop.IOLoop.instance()
+    def register_signal(sig, frame):
+        global signal_received
+        print("%s received, stopping server" % sig)
+        close_all_websockets()
+        ioloop.add_callback(ioloop.stop)
+        signal_received = True
+
+    def stop_on_signal():
+        global signal_received
+        if signal_received and not ioloop._callbacks:
+            ioloop.stop()
+            print("IOLoop stopped")
+
+    tornado.ioloop.PeriodicCallback(stop_on_signal, 1000).start()
+    signal.signal(signal.SIGTERM, register_signal)
+    logging.info("Starting server")
+    ioloop.start()
 
 def websocket_send_message(message):
     removable = set()
