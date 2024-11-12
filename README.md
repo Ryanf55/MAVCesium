@@ -74,7 +74,7 @@ Then, start the cesium_web_server.
 
 ```bash
 cd app
-python3 cesium_web_server.py
+./cesium_web_server.py
 ```
 
 Each time you change code, you must kill the Tornado server, restart it, and refresh the web page.
