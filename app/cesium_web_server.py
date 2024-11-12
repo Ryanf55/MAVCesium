@@ -34,7 +34,7 @@ class MainHandler(tornado.web.RequestHandler):
         self.configuration = configuration
         
     def get(self):
-        self.render("index.html", bing_api_key=self.configuration.BING_API_KEY, websocket=self.configuration.WEBSOCKET, markers=False,
+        self.render("index.html", websocket=self.configuration.WEBSOCKET, markers=False,
                      app_prefix = self.configuration.APP_PREFIX)
         
 class ContextHandler(tornado.web.RequestHandler):

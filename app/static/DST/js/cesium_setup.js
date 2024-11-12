@@ -13,10 +13,6 @@ var entity_shadows = {value: false}
      clockStep : Cesium.ClockStep.SYSTEM_CLOCK_MULTIPLIER
   });
 
-  console.log(bing_api_key)
-//   if (bing_api_key) {
-// 	  Cesium.BingMapsApi.defaultKey = bing_api_key;
-//   }
     // The terrain provider needs this....
     // this is a 'free' cesium-ion access token created by davidbuzz@gmail.com and approved for non-commercial/community purposes by cesium.
     // The MAVCesium project itself is non-commercial, so using this key here is the right thing to do, but if you fork MAVCesium and use it 

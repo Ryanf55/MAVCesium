@@ -47,8 +47,6 @@ class Configuration(object):
                     self.SERVER_PORT = _conf.get('general', 'server_port')
                     self.WEBSOCKET = str("ws://" + _conf.get('general', 'websocket_interface') + ":" + _conf.get('general', 'websocket_port') +
                                     "/" + self.APP_PREFIX + "websocket/")
-                    
-                    self.BING_API_KEY = _conf.get('api_keys', 'bing')
         
                     self.APP_SECRET_KEY = str(_conf.get('general', 'app_secret_key'))
                     if self.APP_SECRET_KEY == "''":
