@@ -4,10 +4,13 @@ Tornado server for Cesium map module
 Samuel Dudley
 Jan 2016
 '''
+
+import asyncio
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
 import tornado.httpserver
+import tornado.platform.asyncio
 import logging
                 
 import os, json, queue, sys, select, signal, threading 
@@ -120,28 +123,9 @@ def stop_tornado(config):
     if config.APP_DEBUG:
         print("Asked Tornado to exit")
 
-    # Tornado doesn't stop well with the current architecture.
-    # Try this approach so we don't have to result to sigterm in CLI.
-    # https://github.com/tornadoweb/tornado/issues/1791#issuecomment-238214198
-    
-    ioloop = tornado.ioloop.IOLoop.instance()
-    def register_signal(sig, frame):
-        global signal_received
-        print("%s received, stopping server" % sig)
-        close_all_websockets()
-        ioloop.add_callback(ioloop.stop)
-        signal_received = True
-
-    def stop_on_signal():
-        global signal_received
-        if signal_received and not ioloop._callbacks:
-            ioloop.stop()
-            print("IOLoop stopped")
-
-    tornado.ioloop.PeriodicCallback(stop_on_signal, 1000).start()
-    signal.signal(signal.SIGTERM, register_signal)
-    logging.info("Starting server")
-    ioloop.start()
+    close_all_websockets()
+    ioloop = tornado.ioloop.IOLoop.current()
+    ioloop.add_callback(ioloop.stop)
 
 def websocket_send_message(message):
     removable = set()
@@ -160,11 +144,10 @@ def websocket_send_message(message):
 
 def main(config, module_callback):
     server = start_app(config=config, module_callback=module_callback)
-    tornado.ioloop.IOLoop.current().start()
-    if config.APP_DEBUG:
-        print("Tornado finished")
-    server.stop()
-    
+    ioloop = tornado.ioloop.IOLoop.current()
+    asyncio.set_event_loop_policy(tornado.platform.asyncio.AnyThreadEventLoopPolicy())
+    ioloop.start()
+
 class Connection(object):
     def __init__(self, connection):
         self.control_connection = connection # a MAVLink connection
