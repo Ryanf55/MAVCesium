@@ -10,11 +10,7 @@ import tornado.websocket
 import tornado.httpserver
 import logging
                 
-import os, json, sys, select, signal, threading
-try:
-    import Queue as queue
-except ImportError:
-    import queue
+import os, json, queue, sys, select, signal, threading 
 
 lock = threading.Lock()
 live_web_sockets = set()
