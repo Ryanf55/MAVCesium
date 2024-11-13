@@ -131,7 +131,7 @@ class CesiumModule(mp_module.MPModule):
     def send_fence(self):
         '''load and draw the fence in cesium'''
         self.fence = {}
-        self.fence_points_to_send = self.mpstate.public_modules['fence'].fenceloader.points
+        self.fence_points_to_send = self.mpstate.public_modules['fence'].wploader.points
         for point in self.fence_points_to_send:
             point_dict = point.to_dict()
             idx = point_dict['idx']
@@ -190,8 +190,8 @@ class CesiumModule(mp_module.MPModule):
             self.rally_change_time = time.time()
     
         # if the fence has changed, redisplay
-        if self.fence_change_time != self.module('fence').fenceloader.last_change:
-            self.fence_change_time = self.module('fence').fenceloader.last_change
+        if self.fence_change_time != self.module('fence').wploader.last_change:
+            self.fence_change_time = self.module('fence').wploader.last_change
             self.send_fence()
                 
     def idle_task(self):
