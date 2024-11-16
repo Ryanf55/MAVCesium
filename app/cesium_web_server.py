@@ -67,7 +67,10 @@ class DefaultWebSocket(tornado.websocket.WebSocketHandler):
         live_web_sockets.add(self)
         lock.release()
      
-    def on_message(self, message):
+    def on_message(self, message: str):
+        # A callback for when a websocket message is received from the browser (front end).
+        # This is called from inside the base tornado websocket handler class.
+
         if self.configuration.APP_DEBUG:
             print("received websocket message: {0}".format(message))
         message = json.loads(message)
@@ -75,7 +78,6 @@ class DefaultWebSocket(tornado.websocket.WebSocketHandler):
             self.callback(message) # this sends it to the module.send_out_queue_data for further processing.
         else:
             print("no callback for message: {0}".format(message))
-        print(dir(self))
 
     def on_close(self):
         if self.configuration.APP_DEBUG:
