@@ -24,7 +24,7 @@ $('#toggle_pos_target_line').on('click', function(event) {
 
 $('#toggle_fence').on('click', function(event) {
 	  event.preventDefault()
-	  inclusionCircles.length
+	  inclusion_circles.length
 	  toggle_fences()
 });
 
