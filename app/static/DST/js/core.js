@@ -66,7 +66,9 @@ $(function () { // init tool tips and only show on hover
 
     var aircraft = {};
     var pos_target = {lat:null, lon:null, alt_wgs84:null, show:true, color:Cesium.Color.FUCHSIA};
-    var fence = {points:[], show:true, alt_agl:500, color:Cesium.Color.GREEN};
+    var stored_fence = {points_3d:[], points_2d:[], show:true, alt_agl:500, color:Cesium.Color.GREEN};
+	const inclusionCircles = []; // Array to store references to all circle primitives
+
     var home_alt_wgs84 = undefined;
     var data_stream = {};
     var flightmode = null;
@@ -95,39 +97,134 @@ $(function () { // init tool tips and only show on hover
     }
     
     function update_fence_data(fence_data) {
-        console.log(fence_data)
+
+		if (Object.keys(fence_data).length == 0) {
+			clear_fences();
+		}
         
-        fence.points = [];
+        stored_fence.points_3d = [];
+		stored_fence.points_2d = [];
         
         
-        for (var point in fence_data){
-        	if (fence_data.hasOwnProperty(point)) {
-        	
-        		var pointOfInterest = Cesium.Cartographic.fromDegrees(
-        				fence_data[point].lng, fence_data[point].lat, 5000, new Cesium.Cartographic()
-        			);
-				  	// Sample the terrain (async)
-				  	Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, [ pointOfInterest ]).then(function(samples) {
-				  		terrain_sample_height = samples[0].height
-				  	});
-				  	fence.points.push(fence_data[point].lng, fence_data[point].lat, fence.alt_agl+terrain_sample_height); //[ lon, lat, alt, lon, lat, alt, etc. ]
-				  
-				  draw_fence();
-        	}
+        for (var idx in fence_data){
+			var fence_item = fence_data[idx];
+
+			if (fence_item.command != 5003) { // inclusion
+				console.warn("MISSION_ITEM is not supported: ", fence_item)
+			}
+
+
+			var lat = fence_item.x; // degrees
+			var lng = fence_item.y; // degrees
+		
+			var pointOfInterest = Cesium.Cartographic.fromDegrees(
+				lng, lat, 5000, new Cesium.Cartographic()
+			);
+
+			draw_inclusion_circle(fence_item);
+
+			
+
+			// TODO build out different fence objects
+			// https://sandcastle.cesium.com/#c=nVRda9swFP0rIi91IJPihiwsTcNKBmUwWGFlL3UeFFlJxWTJSHKCV/rfd2XZrp0Yuo1AiI50dT50b5hW1qGj4Cdu0C1S/IQ23Ioiwz8rLEpGrFpvtHJUKG6S0fgmUaiuwYxm3FC8l+Wjjl78BkIpt04o6oRWy+a6DTUOflE1w3ujsy/8YDi30Yc4XuD44wTNrvEinqB4Pp1O8XQ88Te9eib/YZXKXMtSggTbF/pQwxstJWeeNPJ17WlM0zQoy7UVft+id2TdGUPL6Cm4OZPYBRcBvO6BnwI42wYTJ5G6ZyCcVyupdb5EzhQ8UbW9OkjLuOL4YHSh0gcjMlB6rMW3VsZvYTBhmOT9JDYVds91xp0pg2e41cHT/ts7BOWGpqLwWc39k9R6A/uh5gD+QW7MDKfuTUpQ6+sJed8vkBOCXvxh1FJ9BV6qoBmX6KnBtuHI60UuzeF+PvdnV4WEWi/LurgyL1JYXwXgqkKoc0bsCkgPdupOZ1pqH273ETx0znTX1EaQJHR5+zXF83HV6sPtkPeD6XrpB9e30mbVemoQTxN4CPkPisEHARIDg0fVoctDSGAi5GIS/S3tLP7tKPqigWHswp1x7MLNQHp025hvRGEmaZY/6mAW+sXP5s1oMlpZV0q+Du+M0GeR5do4VBgZYUwcz3IJHW7JrmC/uMPM2vC/iNCKdEtXqThCN90O/JEi4LYWdvaFlD/Eb56M1isC5y9KpYZZVIfvR24kLf2x53j9LYAY4xWB5XCl01ruqDm7+Q8
+
+			// TODO ensure field "mission_type" of MAV_MISSION_TYPE is MAV_MISSION_TYPE_FENCE.
+
+			// Sample the terrain (async)
+			// Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, [ pointOfInterest ]).then(function(samples) {
+			// 	terrain_sample_height = samples[0].height
+			// });
+			// var fence_top_alt = stored_fence.alt_agl + terrain_sample_height
+			// stored_fence.points_3d.push(lng, lat, fence_top_alt); //[ lon, lat, alt, lon, lat, alt, etc. ]
+			stored_fence.points_2d.push(lng, lat); //[ lon, lat, lon, lat, etc. ]	
+
         };
+		draw_fence();
     }
+
+	function clear_fences() {
+
+		if (inclusionCircles.length === 0) {
+			console.warn("No inclusion circles to clear.");
+			return;
+		}
+	
+		// Remove all circle primitives from the scene
+		inclusionCircles.forEach(circlePrimitive => {
+			viewer.scene.primitives.remove(circlePrimitive);
+		});
+	
+		// Clear the array
+		inclusionCircles.length = 0;
+	
+		console.log("All inclusion circles cleared.");
+	}
+
+	function draw_inclusion_circle(mission_item_circle) {
+		// Given a mavlink MISSION_ITEM of command 5003 (inclusion circle), draw it.
+
+		const circle = new Cesium.CircleGeometry({
+			center : Cesium.Cartesian3.fromDegrees(
+				mission_item_circle.y,
+				mission_item_circle.x),
+			radius : mission_item_circle.param1
+		});
+
+		const circleInstance = new Cesium.GeometryInstance({
+			geometry : circle,
+			id : `inclusionCircle-${inclusionCircles.length}`,
+			attributes : {
+			  color : new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 0.0, 0.15)
+			}
+		});
+
+		    // Create the primitive
+		const circlePrimitive = new Cesium.GroundPrimitive({
+			geometryInstances: circleInstance
+		});
+		  
+		// Add the primitive to the scene
+		viewer.scene.primitives.add(circlePrimitive);
+
+		// Store the reference in the array
+		inclusionCircles.push(circlePrimitive);
+	};
+
     function draw_fence() {
-    		viewer.entities.remove(viewer.entities.getById('fence_wall'))
-    	if (fence.points.length > 9) {
-    		var fence_wall = viewer.entities.add({
-		    	id : "fence_wall",
-		    	wall : {
-		    		positions: Cesium.Cartesian3.fromDegreesArrayHeights( fence.points )
-		    	},
-		    	show : fence.show
-		     })
+		return
+		viewer.entities.remove(viewer.entities.getById('fence_wall'))
+		// TODO draw fence as dashed line if it's disabled.
+		// https://sandcastle.cesium.com/#c=5VXbjtowEP2VaZ4SiTpAl6plWVQE1WqlXlZa1Kpq+uBNBrDWsSPbIU0r/r1OghNgL93n9gk8PmfmzJnBxFJoA1uGBSq4AIEFzFGzPCVf6pgfeXF9nkthKBOoIq8HvyMBAAaVsqGxYyybM1kpmX6Viif7gB9EYhecRyKui+kYBdpaTVFSH+1lJNgK/Bf7XJdK5iK5lrzktui1YikzbIuE6Zs8y6QymPg1MwgaNQUTiSwI5aiMX8uDyHN8DVI4uUAVgpBWh0tUX26YhoxTs5IqJZFXZagk7yphYQguE1xyWUSiLk3WjUgnThOaJHXtAxsfacRvLIQ1yhSNKq+sM1RYq8dH5JNbx+p448drOXJHAsiktuXtGNqhzam1QDMqXtVzW+BaIeqZtar0v3dEgJeD4ZAMR6M3vcPo2WsyeDsa9e4hB/2/In8EB4eCJWYzhkGf9NvozgHaLzTLkKrKiqPGXcsfqR0yo3zWwrrm0/1d27kD130vywz9Ts0ppPXUTr+COuSJwJ3d9OD8dGUWVG/+x5Vp9uB569L/93alGvszdmX/DMY0RUUJl/Ju1jxgT7rtdz+y1i1rSN9a0qQ/6LjL4I9qRA+OP59QsrTO6OpN9Ls2Fft5Rq4W7z8tr5bfmnX3et5Em5Lj1HX7jqXV6wq54j4hocG0el1Rh7d5fIeGxFpX1Ao6CQ+pk4RtgSUXD/zxQMyp1vZmlXN+w35h5E0nocXfo3JJEybWn7eoOC0r2GYw/dAECSGT0B4fZhop+S1VJ5n/AA
+    	if (stored_fence.points_2d.length > 4) {
+
+			scene.groundPrimitives.add(
+				new Cesium.GroundPolylinePrimitive({
+					geometryInstances: new Cesium.GeometryInstance({
+						geometry: new Cesium.GroundPolylineGeometry({
+							positions: Cesium.Cartesian3.fromDegreesArray(
+							stored_fence.points_2d
+							),
+							width: 10.0,
+						}),
+					}),
+					appearance: new Cesium.PolylineMaterialAppearance({
+						material: Cesium.Material.fromType(
+							Cesium.Material.PolylineDashType
+							),
+					}),
+				})
+			);
+
+
+    		// var fence_wall = viewer.entities.add({
+		    // 	id : "fence_wall",
+		    // 	wall : {
+		    // 		positions: Cesium.Cartesian3.fromDegreesArrayHeights( stored_fence.points )
+		    // 	},
+		    // 	show : stored_fence.show
+			// })
     	}
-     };
+	};
     
     function update_mission_data(mision_data) {
  
@@ -159,6 +256,10 @@ $(function () { // init tool tips and only show on hover
     function update_aircraft_data() {
     	if (data_stream.ATTITUDE && data_stream.GLOBAL_POSITION_INT) {
             var entity = viewer.entities.getById('vehicle');
+			if (!entity) {
+				console.log("No vehicle entity.");
+				return;
+			}
             
             aircraft.lat = data_stream.GLOBAL_POSITION_INT.lat*Math.pow(10.0, -7);
             aircraft.lon = data_stream.GLOBAL_POSITION_INT.lon*Math.pow(10.0, -7);
