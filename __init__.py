@@ -234,6 +234,7 @@ class CesiumModule(mp_module.MPModule):
                 self.mpstate.functions.process_stdin('fence list')
 
             elif 'fence_clear' in payload.keys():
+                # Drop the payload value; it doesn't matter.
                 self.mpstate.functions.process_stdin('fence clear')
              
             else:
