@@ -229,9 +229,12 @@ class CesiumModule(mp_module.MPModule):
                  
             elif 'fence_list' in payload.keys():
                 self.mpstate.functions.process_stdin('fence list')
+
+            elif 'fence_clear' in payload.keys():
+                self.mpstate.functions.process_stdin('fence clear')
              
             else:
-                pass
+                print("Unknown payload")
    
     def unload(self):
         '''unload module'''

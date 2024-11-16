@@ -63,7 +63,11 @@ $contextMenu.on("click", "a", function(evt) {
 //            entity.show = show_fence.value;
 //        }
     }
-    
+
+	if (evt.target.id === 'fence-clear'){
+    	send(JSON.stringify({fence_clear: evt.target.id}));
+	}
+
     if (evt.target.id === 'mission-list'){
     	send(JSON.stringify({wp_list: evt.target.id}));
 //    	var entity = viewer.entities.getById('mission_line');
