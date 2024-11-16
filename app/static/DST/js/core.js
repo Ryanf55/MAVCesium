@@ -66,7 +66,9 @@ $(function () { // init tool tips and only show on hover
 
     var aircraft = {};
     var pos_target = {lat:null, lon:null, alt_wgs84:null, show:true, color:Cesium.Color.FUCHSIA};
-    var fence = {points:[], show:true, alt_agl:500, color:Cesium.Color.GREEN};
+    var stored_fence = {points_3d:[], points_2d:[], show:true, alt_agl:500, color:Cesium.Color.GREEN};
+	const inclusionCircles = []; // Array to store references to all circle primitives
+
     var home_alt_wgs84 = undefined;
     var data_stream = {};
     var flightmode = null;
@@ -95,39 +97,77 @@ $(function () { // init tool tips and only show on hover
     }
     
     function update_fence_data(fence_data) {
-        console.log(fence_data)
+
+		if (Object.keys(fence_data).length == 0) {
+			clear_fences();
+		}
         
-        fence.points = [];
-        
-        
-        for (var point in fence_data){
-        	if (fence_data.hasOwnProperty(point)) {
-        	
-        		var pointOfInterest = Cesium.Cartographic.fromDegrees(
-        				fence_data[point].lng, fence_data[point].lat, 5000, new Cesium.Cartographic()
-        			);
-				  	// Sample the terrain (async)
-				  	Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, [ pointOfInterest ]).then(function(samples) {
-				  		terrain_sample_height = samples[0].height
-				  	});
-				  	fence.points.push(fence_data[point].lng, fence_data[point].lat, fence.alt_agl+terrain_sample_height); //[ lon, lat, alt, lon, lat, alt, etc. ]
-				  
-				  draw_fence();
-        	}
+        for (var idx in fence_data){
+			var fence_item = fence_data[idx];
+
+			if (fence_item.command != 5003) { // inclusion
+				console.warn("MISSION_ITEM is not yet supported: ", fence_item)
+			}
+
+			draw_inclusion_circle(fence_item);
+
         };
     }
-    function draw_fence() {
-    		viewer.entities.remove(viewer.entities.getById('fence_wall'))
-    	if (fence.points.length > 9) {
-    		var fence_wall = viewer.entities.add({
-		    	id : "fence_wall",
-		    	wall : {
-		    		positions: Cesium.Cartesian3.fromDegreesArrayHeights( fence.points )
-		    	},
-		    	show : fence.show
-		     })
-    	}
-     };
+
+	function clear_fences() {
+
+		if (inclusionCircles.length === 0) {
+			console.warn("No inclusion circles to clear.");
+			return;
+		}
+	
+		// Remove all circle primitives from the scene
+		inclusionCircles.forEach(circlePrimitive => {
+			viewer.scene.primitives.remove(circlePrimitive);
+		});
+	
+		// Clear the array
+		inclusionCircles.length = 0;
+	
+		console.log("All inclusion circles cleared.");
+	}
+
+	function toggle_fences() {
+		// Remove all circle primitives from the scene
+		inclusionCircles.forEach(circlePrimitive => {
+			circlePrimitive.show = !circlePrimitive.show;
+		});	
+	}
+
+	function draw_inclusion_circle(mission_item_circle) {
+		// Given a mavlink MISSION_ITEM of command 5003 (inclusion circle), draw it.
+
+		const circle = new Cesium.CircleGeometry({
+			center : Cesium.Cartesian3.fromDegrees(
+				mission_item_circle.y,
+				mission_item_circle.x),
+			radius : mission_item_circle.param1
+		});
+
+		const circleInstance = new Cesium.GeometryInstance({
+			geometry : circle,
+			id : `inclusionCircle-${inclusionCircles.length}`,
+			attributes : {
+			  color : new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 0.0, 0.15)
+			}
+		});
+
+		    // Create the primitive
+		const circlePrimitive = new Cesium.GroundPrimitive({
+			geometryInstances: circleInstance
+		});
+		  
+		// Add the primitive to the scene
+		viewer.scene.primitives.add(circlePrimitive);
+
+		// Store the reference in the array
+		inclusionCircles.push(circlePrimitive);
+	};
     
     function update_mission_data(mision_data) {
  
@@ -159,6 +199,10 @@ $(function () { // init tool tips and only show on hover
     function update_aircraft_data() {
     	if (data_stream.ATTITUDE && data_stream.GLOBAL_POSITION_INT) {
             var entity = viewer.entities.getById('vehicle');
+			if (!entity) {
+				console.log("No vehicle entity.");
+				return;
+			}
             
             aircraft.lat = data_stream.GLOBAL_POSITION_INT.lat*Math.pow(10.0, -7);
             aircraft.lon = data_stream.GLOBAL_POSITION_INT.lon*Math.pow(10.0, -7);
