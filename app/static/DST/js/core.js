@@ -66,9 +66,11 @@ $(function () { // init tool tips and only show on hover
 
     var aircraft = {};
     var pos_target = {lat:null, lon:null, alt_wgs84:null, show:true, color:Cesium.Color.FUCHSIA};
-    var stored_fence = {points_3d:[], points_2d:[], show:true, alt_agl:500, color:Cesium.Color.GREEN};
-	const inclusionCircles = []; // Array to store references to all circle primitives
 
+	// Array to store references to all inclusion circle fence primitives.
+	const inclusion_circles = []; 
+	// Array to store references to all exclusion circle fence primitives.
+	const exclusion_circles = []; 
     var home_alt_wgs84 = undefined;
     var data_stream = {};
     var flightmode = null;
@@ -105,42 +107,54 @@ $(function () { // init tool tips and only show on hover
         for (var idx in fence_data){
 			var fence_item = fence_data[idx];
 
-			if (fence_item.command != 5003) { // inclusion
+			// MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION
+			const POLYGON_VERTEX_INCLUSION = 5001;
+			// MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION
+			const POLYGON_VERTEX_EXCLUSION = 5002
+			// MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION
+			const CIRCLE_INCLUSION = 5003;
+			// MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION
+			const CIRCLE_EXCLUSION = 5004;
+
+			if (fence_item.command == CIRCLE_INCLUSION) {
+				draw_inclusion_circle(fence_item);
+			} else if (fence_item.command == CIRCLE_EXCLUSION) {
+				draw_exclusion_circle(fence_item);
+			} else  {
 				console.warn("MISSION_ITEM is not yet supported: ", fence_item)
 			}
-
-			draw_inclusion_circle(fence_item);
 
         };
     }
 
 	function clear_fences() {
 
-		if (inclusionCircles.length === 0) {
+		if (inclusion_circles.length === 0) {
 			console.warn("No inclusion circles to clear.");
 			return;
 		}
 	
 		// Remove all circle primitives from the scene
-		inclusionCircles.forEach(circlePrimitive => {
+		inclusion_circles.forEach(circlePrimitive => {
 			viewer.scene.primitives.remove(circlePrimitive);
 		});
 	
 		// Clear the array
-		inclusionCircles.length = 0;
+		inclusion_circles.length = 0;
 	
 		console.log("All inclusion circles cleared.");
 	}
 
 	function toggle_fences() {
 		// Remove all circle primitives from the scene
-		inclusionCircles.forEach(circlePrimitive => {
+		inclusion_circles.forEach(circlePrimitive => {
 			circlePrimitive.show = !circlePrimitive.show;
 		});	
 	}
 
 	function draw_inclusion_circle(mission_item_circle) {
-		// Given a mavlink MISSION_ITEM of command 5003 (inclusion circle), draw it.
+		// Given a mavlink MISSION_ITEM of
+		// type MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION, draw it.
 
 		const circle = new Cesium.CircleGeometry({
 			center : Cesium.Cartesian3.fromDegrees(
@@ -151,7 +165,7 @@ $(function () { // init tool tips and only show on hover
 
 		const circleInstance = new Cesium.GeometryInstance({
 			geometry : circle,
-			id : `inclusionCircle-${inclusionCircles.length}`,
+			id : `inclusionCircle-${inclusion_circles.length}`,
 			attributes : {
 			  color : new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 0.0, 0.15)
 			}
@@ -166,8 +180,39 @@ $(function () { // init tool tips and only show on hover
 		viewer.scene.primitives.add(circlePrimitive);
 
 		// Store the reference in the array
-		inclusionCircles.push(circlePrimitive);
+		inclusion_circles.push(circlePrimitive);
 	};
+
+	function draw_exclusion_circle(mission_item_circle) {
+		// Given a mavlink MISSION_ITEM of
+		// type MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION, draw it.
+
+		const circle = new Cesium.CircleGeometry({
+			center : Cesium.Cartesian3.fromDegrees(
+				mission_item_circle.y,
+				mission_item_circle.x),
+			radius : mission_item_circle.param1
+		});
+
+		const circleInstance = new Cesium.GeometryInstance({
+			geometry : circle,
+			id : `exclusionCircle-${inclusion_circles.length}`,
+			attributes : {
+			  color : new Cesium.ColorGeometryInstanceAttribute(1.0, 0.0, 0.0, 0.15)
+			}
+		});
+
+		    // Create the primitive
+		const circlePrimitive = new Cesium.GroundPrimitive({
+			geometryInstances: circleInstance
+		});
+		  
+		// Add the primitive to the scene
+		viewer.scene.primitives.add(circlePrimitive);
+
+		// Store the reference in the array
+		exclusion_circles.push(circlePrimitive);
+	}
     
     function update_mission_data(mision_data) {
  
