@@ -9,13 +9,13 @@ $(function () { // init tool tips and only show on hover
     var vehicle_offset_x = 25
     var vehicle_offset_y = 25
     var vehicle_offset_z = 25
-    var vehicle_model = '/'+app_prefix+'static/DST/models/rat.gltf'
+    var vehicle_model = '/'+app_prefix+'static/DST/models/Cesium_Air.glb'
     
     var position = Cesium.Cartesian3.fromDegrees(0, 0, 0); 	
     	
     vehicle_offset = new Cesium.Cartesian3(vehicle_offset_x,vehicle_offset_y,vehicle_offset_z)
     viewer.entities.add({
-    	id : "vehicle",
+    	id : 'vehicle',
         position : position,
         
         model : {
@@ -252,14 +252,13 @@ $(function () { // init tool tips and only show on hover
             aircraft.lat = data_stream.GLOBAL_POSITION_INT.lat*Math.pow(10.0, -7);
             aircraft.lon = data_stream.GLOBAL_POSITION_INT.lon*Math.pow(10.0, -7);
             aircraft.alt_wgs84 = data_stream.GLOBAL_POSITION_INT.alt*Math.pow(10.0, -3);
+			aircraft.alt_wgs84 = aircraft.alt_wgs84;
             aircraft.roll = data_stream.ATTITUDE.roll
             aircraft.pitch = data_stream.ATTITUDE.pitch
-            aircraft.yaw = data_stream.ATTITUDE.yaw
-            
+            aircraft.yaw = data_stream.ATTITUDE.yaw           
             aircraft.position = Cesium.Cartesian3.fromDegrees(aircraft.lon, aircraft.lat, aircraft.alt_wgs84);
-		    aircraft.hpr = new Cesium.HeadingPitchRoll(aircraft.yaw+Math.PI/2, -aircraft.pitch, -aircraft.roll);
+		    aircraft.hpr = new Cesium.HeadingPitchRoll(aircraft.yaw - Math.PI/2, aircraft.pitch, aircraft.roll);
 		    aircraft.orientation = Cesium.Transforms.headingPitchRollQuaternion(aircraft.position, aircraft.hpr);
-		    
 		    entity.position = aircraft.position;
 		    entity.orientation = aircraft.orientation;
 	        
