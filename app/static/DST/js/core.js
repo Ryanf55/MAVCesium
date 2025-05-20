@@ -335,26 +335,9 @@ $(function () { // init tool tips and only show on hover
                 
                 viewer.camera.frustum.fov = default_camera_settings.fov; // this works
                 viewer.camera.frustum.aspectRatio = default_camera_settings.aspect_ratio; // this works
-
-				// Get the aircraft's position and orientation
-				const aircraftPosition = aircraft.position;
-				const heading = aircraft.yaw; // aircraft's yaw in radians
-
-				// Calculate the forward vector (facing direction) from the aircraft's heading
-				const direction = new Cesium.Cartesian3(
-					Math.sin(heading), // X component (forward)
-					Math.cos(heading), // Y component (forward)
-					0 // Z component (horizontal)
-				);
-
-				// Scale the direction vector to move 20 meters forward
-				const cameraOffset = Cesium.Cartesian3.multiplyByScalar(direction, 10, new Cesium.Cartesian3());
-
-				// Calculate the new camera position by adding the offset to the aircraft's position
-				const cameraPosition = Cesium.Cartesian3.add(aircraftPosition, cameraOffset, new Cesium.Cartesian3());
-
+                
                 viewer.camera.setView({
-	        	    destination : cameraPosition,
+	        	    destination : aircraft.position,
 	        	    orientation: {
 	        	        heading : aircraft.yaw,
 	        	        pitch : aircraft.pitch,
@@ -395,14 +378,8 @@ $(function () { // init tool tips and only show on hover
                 viewer.camera.frustum.aspectRatio = mount_camera_settings.aspect_ratio; // this works
                 console.log(Cesium.Math.toDegrees(viewer.camera.frustum.fov), Cesium.Math.toDegrees(viewer.camera.frustum.fovy));
                 
-				// Position the camera below the belly of the aircraft
-				const downwardOffset = new Cesium.Cartesian3(0, 0, -10);
-
-				// Add the downward offset to the aircraft's position
-				const cameraPosition = Cesium.Cartesian3.add(aircraft.position, downwardOffset, new Cesium.Cartesian3());
-
                 viewer.camera.setView({
-	        	    destination : cameraPosition,
+	        	    destination : aircraft.position,
 	        	    orientation : {
 				        direction : lookDir,
 				        up : upDir
